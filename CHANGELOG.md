@@ -3,6 +3,7 @@
 ## Main
 
 - Fix `refute_has` when passed a query with an invalid selector.
+- Change default of `count` from 1 to `:any` when `at` is specified (#xxx)
 
 ## v0.29.1 (2021-09-22)
 

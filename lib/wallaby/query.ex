@@ -26,7 +26,7 @@ defmodule Wallaby.Query do
 
   All of the query operations accept the following options:
 
-    * `:count` - The number of elements that should be found, or :any for any number greater than 0 (default: 1 if no minimum nor maximum is specified, nil otherwise).
+    * `:count` - The number of elements that should be found, or :any for any number greater than 0 (default: 1 if no minimum, maximum or at is specified, nil/:any otherwise).
     * `:minimum` - The minimum number of elements that should be found, or nil (default: nil).
     * `:maximum` - The maximum number of elements that should be found, or nil (default: nil).
     * `:visible` - Determines if the query should return only visible elements (default: true).
@@ -454,7 +454,15 @@ defmodule Wallaby.Query do
   end
 
   def count(%Query{conditions: conditions}) do
-    Keyword.get(conditions, :count)
+    Keyword.get(conditions, :count) || default_count(conditions)
+  end
+
+  defp default_count(conditions) do
+    cond do
+      conditions[:minimum] || conditions[:maximum] -> nil
+      conditions[:at] == :all -> 1
+      true -> :any
+    end
   end
 
   def at_number(%Query{conditions: conditions}) do
@@ -478,15 +486,17 @@ defmodule Wallaby.Query do
     count(query) == 1 || at_number(query) != :all
   end
 
-  def matches_count?(%{conditions: conditions}, count) do
+  def matches_count?(%{conditions: conditions} = query, count) do
+    query_count = count(query)
+
     cond do
-      conditions[:count] == :any ->
+      query_count == :any ->
         count > 0
 
-      conditions[:count] ->
-        conditions[:count] == count
+      query_count ->
+        query_count == count
 
-      true ->
+      conditions[:minimum] || conditions[:maximum] ->
         !(conditions[:minimum] && conditions[:minimum] > count) &&
           !(conditions[:maximum] && conditions[:maximum] < count)
     end
@@ -514,14 +524,10 @@ defmodule Wallaby.Query do
   end
 
   defp add_count(opts) do
-    if opts[:count] == nil && opts[:minimum] == nil && opts[:maximum] == nil do
-      Keyword.put(opts, :count, 1)
-    else
-      opts
-      |> Keyword.put_new(:count, nil)
-      |> Keyword.put_new(:minimum, nil)
-      |> Keyword.put_new(:maximum, nil)
-    end
+    opts
+    |> Keyword.put_new(:count, nil)
+    |> Keyword.put_new(:minimum, nil)
+    |> Keyword.put_new(:maximum, nil)
   end
 
   defp add_at(opts) do
