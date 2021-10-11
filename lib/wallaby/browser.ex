@@ -1423,15 +1423,21 @@ defmodule Wallaby.Browser do
   end
 
   defp do_at(query, elements) do
-    case {Query.at_number(query), length(elements)} do
-      {:all, _} ->
+    case Query.at_number(query) do
+      :all ->
         {:ok, elements}
 
-      {n, count} when n >= 0 and n < count ->
-        {:ok, [Enum.at(elements, n)]}
-
-      {_, _} ->
+      n when n < 0 ->
         {:error, {:at_number, query}}
+
+      n ->
+        elem = Enum.at(elements, n)
+
+        if elem do
+          {:ok, [elem]}
+        else
+          {:error, {:at_number, query}}
+        end
     end
   end
 
