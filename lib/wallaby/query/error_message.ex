@@ -9,11 +9,7 @@ defmodule Wallaby.Query.ErrorMessage do
   @spec message(Query.t(), any()) :: String.t()
 
   def message(%Query{} = query, :not_found) do
-    "Expected to find #{found_error_message(query)}"
-  end
-
-  def message(%Query{} = query, :found) do
-    "Expected not to find #{found_error_message(query)}"
+    "Expected #{negation(quer)}to find #{found_error_message(query)}"
   end
 
   def message(%{method: method, selector: selector}, :label_with_no_for) do
@@ -56,7 +52,7 @@ defmodule Wallaby.Query.ErrorMessage do
   def message(_, {:at_number, query}) do
     #   The query is invalid. the 'at' number requested is not within the results list (1-#{size}).
     """
-    The element at index #{Query.at_number(query)} is not available because #{
+    The element at index #{Query.at_number(query)} is #{negation(Query.negate(query))}available because #{
       result_count(query.result)
     } #{method(query)} #{result_expectation(query.result)}
     """
@@ -85,6 +81,10 @@ defmodule Wallaby.Query.ErrorMessage do
     If you expect to find the selector #{times(length(elements))} then you
     should include the `count: #{length(elements)}` option in your finder.
     """
+  end
+
+  defp negation(%{conditions}) do
+    if conditions[:negated], do: "not ", else: ""
   end
 
   defp found_error_message(query) do

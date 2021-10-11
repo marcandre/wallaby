@@ -116,7 +116,8 @@ defmodule Wallaby.Query do
           text: String.t() | nil,
           visible: boolean() | :any,
           selected: boolean() | :any,
-          at: non_neg_integer | :all
+          at: non_neg_integer | :all,
+          negated: boolean()
         ]
   @type result :: list(Element.t())
   @type opts :: list()
@@ -461,6 +462,7 @@ defmodule Wallaby.Query do
     cond do
       conditions[:minimum] || conditions[:maximum] -> nil
       conditions[:at] == :all -> 1
+      conditions[:negated] -> :all
       true -> :any
     end
   end
@@ -491,15 +493,35 @@ defmodule Wallaby.Query do
 
     cond do
       query_count == :any ->
-        count > 0
+        negate_flag(query, count > 0)
+
+      query_count == :all ->
+        true
 
       query_count ->
-        query_count == count
+        negate_flag(query, query_count == count)
 
       conditions[:minimum] || conditions[:maximum] ->
-        !(conditions[:minimum] && conditions[:minimum] > count) &&
-          !(conditions[:maximum] && conditions[:maximum] < count)
+        negate_flag(query,
+          !(conditions[:minimum] && conditions[:minimum] > count) &&
+            !(conditions[:maximum] && conditions[:maximum] < count)
+        )
     end
+  end
+
+  defp negate_flag(query, flag) do
+    flag != negated?(query)
+  end
+
+  @doc """
+  Negates the query; used to implement `refute_has`
+  """
+  def negate(%{conditions: conditions} = query) do
+    %{query | conditions: Keyword.get_and_update!(conditions, :negated, &not/1)
+  end
+
+  def negated?(%{conditions: conditions}) do
+    conditions[:negated]
   end
 
   defp build_conditions(opts) do
@@ -509,6 +531,7 @@ defmodule Wallaby.Query do
     |> add_count
     |> add_selected
     |> add_at
+    |> add_negated
   end
 
   defp add_visibility(opts) do
@@ -532,6 +555,10 @@ defmodule Wallaby.Query do
 
   defp add_at(opts) do
     Keyword.put_new(opts, :at, :all)
+  end
+
+  defp add_negated(opts) do
+    Keyword.put_new(opts, :negated, false)
   end
 
   defp update_condition(%Query{conditions: conditions} = query, key, value) do

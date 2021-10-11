@@ -1169,21 +1169,7 @@ defmodule Wallaby.Browser do
   """
   defmacro refute_has(parent, query) do
     quote do
-      parent = unquote(parent)
-      query = unquote(query)
-
-      case execute_query(parent, query) do
-        {:error, :invalid_selector} ->
-          raise Wallaby.QueryError,
-                Query.ErrorMessage.message(query, :invalid_selector)
-
-        {:error, _not_found} ->
-          parent
-
-        {:ok, query} ->
-          raise Wallaby.ExpectationNotMetError,
-                Query.ErrorMessage.message(query, :found)
-      end
+      assert_has(unquote(parent), Query.negate(unquote(parent))))
     end
   end
 
@@ -1432,8 +1418,12 @@ defmodule Wallaby.Browser do
 
       n ->
         elem = Enum.at(elements, n)
+        negated = Query.negated?(query)
 
-        if elem do
+        cond do
+        elem == nil and negated ->
+          {:ok, []}
+        elem != nil and !negated ->
           {:ok, [elem]}
         else
           {:error, {:at_number, query}}
